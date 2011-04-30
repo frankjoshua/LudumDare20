@@ -12,8 +12,9 @@ using namespace std;
 
 #define SWING_TIME 100
 #define HANG_TIME 500
-#define DRAG_SPEED 0.0001
-#define WALK_SPEED 0.0005
+#define DRAG_SPEED 0.001
+#define WALK_SPEED 0.005
+#define TURN_SPEED 0.07
 #define TURN_TIME 400
 
 class Guy :
@@ -67,116 +68,74 @@ class Guy :
 
     protected:
 
-        void figure_angle_and_vector() {
-            if( current_vector[0] != new_vector[0] ||
-                current_vector[1] != new_vector[1] ||
-                current_speed != new_speed ||
-                current_angle != new_angle )
-            {
-                float x_slice = time_since_draw()*(new_vector[0] - old_vector[0])/TURN_TIME;
-                float y_slice = time_since_draw()*(new_vector[1] - old_vector[1])/TURN_TIME;
+        bool figure_angle_and_vector() {
+        	  if( current_vector[0] != new_vector[0] ||
+        	                    current_vector[1] != new_vector[1] ||
+        	                    current_speed != new_speed ||
+        	                    current_angle != new_angle )
+        	                {
 
-                if( x_slice > 0 && 
-                    old_vector[0] < new_vector[0] &&
-                    current_vector[0] + x_slice < new_vector[0] )
-                {
-                    current_vector[0] += x_slice;
-                }
-                else if( x_slice > 0 ) {
-                    current_vector[0] = new_vector[0];
-                }
-                else if( x_slice < 0 && 
-                         old_vector[0] > new_vector[0] &&
-                         current_vector[0] - x_slice > new_vector[0] )
-                {
-                    current_vector[0] += x_slice;
-                }
-                else if( x_slice < 0 ) {
-                    current_vector[0] = new_vector[0];
-                }
-                else {
-                    current_vector[0] = new_vector[0];
-                }
+        	                    current_vector[0] = new_vector[0];
+        	                    current_vector[1] = new_vector[1];
 
-                if( y_slice > 0 && 
-                    old_vector[1] < new_vector[1] &&
-                    current_vector[1] + y_slice < new_vector[1] )
-                {
-                    current_vector[1] += y_slice;
-                }
-                else if( y_slice > 0 ) {
-                    current_vector[1] = new_vector[1];
-                }
-                else if( y_slice < 0 && 
-                         old_vector[1] > new_vector[1] &&
-                         current_vector[1] - y_slice > new_vector[1] )
-                {
-                    current_vector[1] += y_slice;
-                }
-                else if( y_slice < 0 ) {
-                    current_vector[1] = new_vector[1];
-                }
-                else {
-                    current_vector[1] = new_vector[1];
-                }
-                
-                float speed_slice = time_since_draw()*(new_speed - old_speed)/TURN_TIME;
+        	                    float x_distance = x() - current_vector[0];
+        	                    x_distance = x_distance < 0 ? x_distance*-1 : x_distance;
 
-                if( speed_slice > 0 && 
-                    old_speed < new_speed &&
-                    current_speed + speed_slice < new_speed)
-                {
-                    current_speed += speed_slice;
-                }
-                else if( speed_slice > 0 ) {
-                    current_speed = new_speed;
-                }
-                else if( speed_slice < 0 && 
-                         old_speed > new_speed &&
-                         current_speed + speed_slice > new_speed )
-                {
-                    current_speed += speed_slice;
-                }
-                else if( speed_slice < 0 ) {
-                    current_speed = new_speed;
-                }
-                else {
-                    current_speed = new_speed;
-                }
+        	                    float y_distance = y() - current_vector[1];
+        	                    y_distance = y_distance < 0 ? y_distance*-1 : y_distance;
 
-                old_angle = current_angle;
-                new_angle = MGE::Helpers::line_angle(
-                    x(), y(),
-                    current_vector[0], current_vector[1] );
+        	                    if( x_distance > 0.001 &&
+        	                        y_distance > 0.001 )
+        	                    {
+        	                        current_speed = new_speed;
 
-                float angle_slice = time_since_draw()*(new_angle - old_angle)/TURN_TIME;
+        	                        old_angle = current_angle;
+        	                        new_angle = MGE::Helpers::line_angle(
+        	                            x(), y(),
+        	                            current_vector[0], current_vector[1] );
 
-                if( angle_slice > 0 && 
-                    old_angle < new_angle &&
-                    current_angle + angle_slice < new_angle)
-                {
-                    current_angle += angle_slice;
-                }
-                else if( angle_slice > 0 ) {
-                    current_angle = new_angle;
-                }
-                else if( angle_slice < 0 && 
-                         old_angle > new_angle &&
-                         current_angle + angle_slice > new_angle )
-                {
-                    current_angle += angle_slice;
-                }
-                else if( angle_slice < 0 ) {
-                    current_angle = new_angle;
-                }
-                else {
-                    current_angle = new_angle;
-                }
-            }
+        	                        if(current_angle != new_angle){
+        	                        	float angleDiff = current_angle - new_angle;
+
+        	                        	if(angleDiff > -3 && angleDiff < 3){
+        	                        		if(current_angle > new_angle){
+												current_angle -= TURN_SPEED;
+											} else {
+												current_angle += TURN_SPEED;
+											}
+        	                        	} else {
+        	                        		if(current_angle > new_angle){
+												current_angle += TURN_SPEED;
+											} else {
+												current_angle -= TURN_SPEED;
+											}
+        	                        	}
+
+        	                        	if(current_angle < 0){
+        	                        		current_angle = 6;
+        	                        	} else if (current_angle > 6){
+        	                        		current_angle = 0;
+        	                        	}
+
+        	                        	angleDiff = current_angle - new_angle;
+
+        	                        	if(angleDiff > -TURN_SPEED && angleDiff < TURN_SPEED){
+        	                        		current_angle = new_angle;
+        	                        	}
+
+        	                        }
+        	                    }
+        	                    else {
+        	                        current_speed = 0;
+        	                    }
+        	                    return true;
+        	                }
+        	  return false;
         }
 
         bool draw() {
-            figure_angle_and_vector();
+            figure_angle_and_vector()
+
 
             float x_delta = current_speed * cos(current_angle);
             float y_delta = current_speed * sin(current_angle);
