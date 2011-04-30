@@ -17,9 +17,11 @@ ADD_EXECUTABLE(
     game
     ${SOURCE_FILES} )
 
-SET_PROPERTY(
-		TARGET game
-		APPEND PROPERTY LINK_FLAGS -Wl,-framework,Cocoa )
+IF( ${CMAKE_HOST_APPLE} )
+    SET_PROPERTY(
+            TARGET game
+            APPEND PROPERTY LINK_FLAGS -Wl,-framework,Cocoa )
+ENDIF( ${CMAKE_HOST_APPLE} )
 
 TARGET_LINK_LIBRARIES(
     game
@@ -28,6 +30,6 @@ TARGET_LINK_LIBRARIES(
     boost_system
     SOIL
     GL
-    glu
+    GLU
     glut )
 
