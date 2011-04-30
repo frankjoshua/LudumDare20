@@ -12,8 +12,9 @@ using namespace std;
 
 #define SWING_TIME 100
 #define HANG_TIME 500
-#define DRAG_SPEED 0.0001
-#define WALK_SPEED 0.0005
+#define DRAG_SPEED 0.001
+#define WALK_SPEED 0.005
+#define TURN_SPEED 0.005
 #define TURN_TIME 400
 #define BADDIE_SPEED 0.01
 #define BADDIE_RANGE 0.01
@@ -78,6 +79,7 @@ class Guy :
 
     protected:
 
+<<<<<<< HEAD
         void figure_angle_and_vector() {
             if( current_vector[0] != new_vector[0] ||
                 current_vector[1] != new_vector[1] ||
@@ -108,10 +110,80 @@ class Guy :
                     current_speed = 0;
                 }
             }
+=======
+        bool figure_angle_and_vector() {
+        	  if( current_vector[0] != new_vector[0] ||
+        	                    current_vector[1] != new_vector[1] ||
+        	                    current_speed != new_speed ||
+        	                    current_angle != new_angle )
+        	                {
+
+        	                    current_vector[0] = new_vector[0];
+        	                    current_vector[1] = new_vector[1];
+
+        	                    float x_distance = x() - current_vector[0];
+        	                    x_distance = x_distance < 0 ? x_distance*-1 : x_distance;
+
+        	                    float y_distance = y() - current_vector[1];
+        	                    y_distance = y_distance < 0 ? y_distance*-1 : y_distance;
+
+        	                    if( x_distance > 0.001 &&
+        	                        y_distance > 0.001 )
+        	                    {
+        	                        current_speed = new_speed;
+
+        	                        old_angle = current_angle;
+        	                        new_angle = MGE::Helpers::line_angle(
+        	                            x(), y(),
+        	                            current_vector[0], current_vector[1] );
+
+        	                        if(current_angle != new_angle){
+        	                        	float angleDiff = current_angle - new_angle;
+        	                        	float distance = TURN_SPEED * time_since_draw();
+        	                        	if(distance > TURN_SPEED * 33){
+        	                        		distance = TURN_SPEED;
+        	                        	}
+        	                        	cout<<distance<<endl;
+        	                        	if(angleDiff > -3 && angleDiff < 3){
+        	                        		if(current_angle > new_angle){
+												current_angle -= distance;
+											} else {
+												current_angle += distance;
+											}
+        	                        	} else {
+        	                        		if(current_angle > new_angle){
+												current_angle += distance;
+											} else {
+												current_angle -= distance;
+											}
+        	                        	}
+
+        	                        	if(current_angle < 0){
+        	                        		current_angle = 6;
+        	                        	} else if (current_angle > 6){
+        	                        		current_angle = 0;
+        	                        	}
+
+        	                        	angleDiff = current_angle - new_angle;
+
+        	                        	if(angleDiff > -TURN_SPEED && angleDiff < TURN_SPEED){
+        	                        		current_angle = new_angle;
+        	                        	}
+
+        	                        }
+        	                    }
+        	                    else {
+        	                        current_speed = 0;
+        	                    }
+        	                    return true;
+        	                }
+        	  return false;
+>>>>>>> ac954b2c0cc50f576dfbbfab172eea497dce14ff
         }
 
         bool draw() {
             figure_angle_and_vector();
+
 
             float x_delta = current_speed * cos(current_angle);
             float y_delta = current_speed * sin(current_angle);
