@@ -15,9 +15,16 @@ using namespace std;
 #define DRAG_SPEED 0.0001
 #define WALK_SPEED 0.0005
 #define TURN_TIME 400
+#define BADDIE_SPEED 0.01
+#define BADDIE_RANGE 0.01
+
+void state_splash_screen( int n );
+void state_game( int n );
+void state_game_over( int n );
 
 class Guy :
-    public MGE::Drawables::Sprite
+    public MGE::Drawables::Sprite,
+    public MGE::Timer
 {
 
     public:
@@ -36,7 +43,7 @@ class Guy :
                     0,
                     0.2,
                     0.2,
-                    0 ) 
+                    0 )
         {
             old_vector[0] = 0;
             old_vector[1] = 0;
@@ -65,38 +72,42 @@ class Guy :
             new_speed = speed;
         }
 
+        void kill() {
+            glutTimerFunc(1,state_game_over,0);
+        }
+
     protected:
 
         void figure_angle_and_vector() {
-                if( current_vector[0] != new_vector[0] ||
-                    current_vector[1] != new_vector[1] ||
-                    current_speed != new_speed ||
-                    current_angle != new_angle )
+            if( current_vector[0] != new_vector[0] ||
+                current_vector[1] != new_vector[1] ||
+                current_speed != new_speed ||
+                current_angle != new_angle )
+            {
+                current_vector[0] = new_vector[0];
+                current_vector[1] = new_vector[1];
+
+                float x_distance = x() - current_vector[0];
+                x_distance = x_distance < 0 ? x_distance*-1 : x_distance;
+
+                float y_distance = y() - current_vector[1];
+                y_distance = y_distance < 0 ? y_distance*-1 : y_distance;
+
+                if( x_distance > 0.001 &&
+                    y_distance > 0.001 )
                 {
-                    current_vector[0] = new_vector[0];
-                    current_vector[1] = new_vector[1];
+                    current_speed = new_speed;
 
-                    float x_distance = x() - current_vector[0];
-                    x_distance = x_distance < 0 ? x_distance*-1 : x_distance;
-
-                    float y_distance = y() - current_vector[1];
-                    y_distance = y_distance < 0 ? y_distance*-1 : y_distance;
-
-                    if( x_distance > 0.001 &&
-                        y_distance > 0.001 )
-                    {
-                        current_speed = new_speed;
-
-                        old_angle = current_angle;
-                        new_angle = MGE::Helpers::line_angle(
-                            x(), y(),
-                            current_vector[0], current_vector[1] );
-                        current_angle = new_angle;
-                    }
-                    else {
-                        current_speed = 0;
-                    }
+                    old_angle = current_angle;
+                    new_angle = MGE::Helpers::line_angle(
+                        x(), y(),
+                        current_vector[0], current_vector[1] );
+                    current_angle = new_angle;
                 }
+                else {
+                    current_speed = 0;
+                }
+            }
         }
 
         bool draw() {
@@ -236,62 +247,158 @@ class Sword :
 
 };
 
-class MousePtr :
-    public MGE::EventHandlers::Mouse::Motion,
-    public MGE::Drawables::Base
+class Baddie :
+    public MGE::Drawables::Sprite,
+    public MGE::Timer
 {
-
+    
     public:
 
-        MousePtr(const Guy& guy) :
-            Base(10),
-            guy_(guy) {}
+        Baddie( float direction,
+                Guy& guy ) :
+            Sprite( -1,
+                    SOIL_load_OGL_texture(
+						"../assets/baddie.png",
+						SOIL_LOAD_RGBA,
+						SOIL_CREATE_NEW_ID,
+						SOIL_FLAG_MIPMAPS | 
+							SOIL_FLAG_INVERT_Y |
+							SOIL_FLAG_MULTIPLY_ALPHA |
+							SOIL_FLAG_COMPRESS_TO_DXT ),
+                    1.5*sin(direction),
+                    1.5*cos(direction),
+                    0.2,
+                    0.2,
+                    0 ),
+            guy_( guy )
+        {
+            move();
+        }
 
     protected:
 
-        bool handle_mouse_motion(int x, int y) {
-            x_ = MGE::Helpers::mouse_x_to_screen_x(x);
-            y_ = MGE::Helpers::mouse_y_to_screen_y(y);
+        void move() {
+            float angle = MGE::Helpers::line_angle(
+                    x(), y(),
+                    guy_.x(), guy_.y() );
 
-            return true;
-        }
+            float x_delta = BADDIE_SPEED * cos(angle);
+            float y_delta = BADDIE_SPEED * sin(angle);
+            
+            x( x()+x_delta );
+            y( y()+y_delta );
 
-        bool draw() {
-            glLoadIdentity();
-            glColor4f(1,0,0,0.5);
+            float x_distance = x() - guy_.x();
+            float y_distance = y() - guy_.y();
 
-            glBegin(GL_LINES);
-                glVertex3f(guy_.x(), guy_.y(), 0);
-                glVertex3f(x_, y_, 0);
+            float distance = sqrt( x_distance*x_distance + y_distance*y_distance );
 
-                glVertex3f(guy_.x(), guy_.y(), 0 );
-                glVertex3f(x_, guy_.y(), 0 );
-
-                glVertex3f(x_, y_, 0 );
-                glVertex3f(x_, guy_.y(), 0 );
-            glEnd();
-
-            return true;
+            if( distance < BADDIE_RANGE ) {
+                guy_.kill();
+            }
+            
+            timeout(
+                    33,
+                    bind(
+                        &Baddie::move,
+                        this ) );
         }
 
     private:
 
-        float x_,y_;
-
-        const Guy& guy_;
+        Guy& guy_;
 
 };
+
+class State {
+    public:
+        State() {};
+        virtual ~State() {};
+};
+
+State* current_state;
+
+void state_splash_screen( int n ) {
+
+}
+
+class Game : public State,
+    public MGE::Timer 
+{
+    
+    public:
+
+        Game() :
+            background(INT_MIN,0,0,1,1),
+            sword(guy) 
+        {
+            baddie_timeout = 2000;
+            new_baddie();
+        }
+
+        ~Game() {
+            cout<< "Leaving game" <<endl;
+            std::list<Baddie*>::iterator i = baddies.begin();
+            while( i != baddies.end() ) {
+                delete *i;
+                i++;
+            }
+        }
+
+        void new_baddie() {
+            float angle = 1.1*M_PI*float(rand())/INT_MAX;
+
+            baddies.push_back( new Baddie( angle, guy ) );
+
+            baddie_timeout *= 0.99;
+            timeout(baddie_timeout,
+                    bind(
+                        &Game::new_baddie,
+                        this ) );
+        }
+
+    private:
+
+        MGE::Drawables::ClearScreen background;
+
+        unsigned int baddie_timeout;
+
+        Guy guy;
+        Sword sword;
+
+        std::list<Baddie*> baddies;
+
+};
+
+void state_game( int n ) {
+    delete current_state;
+    current_state = new Game;
+}
+
+class GameOver : public State {
+    public:
+
+        GameOver() :
+            background(INT_MIN,1,0,0,1) {}
+
+        ~GameOver() {}
+
+    private:
+
+        MGE::Drawables::ClearScreen background;
+};
+
+void state_game_over( int n ) {
+    delete current_state;
+    current_state = new GameOver;
+}
 
 
 int main( int argc, char** argv ) {
     MGE::App app("You Are The Sword: Ludum Dare 20 Entry");
     app.initialize(argc,argv);
 
-    MGE::Drawables::ClearScreen background(INT_MIN,0,0,1,1);
-    Guy guy;
-    Sword sword(guy);
-
-    MousePtr mouse(guy);
+    state_game(0);
 
     return app.run();
 }
