@@ -11,13 +11,14 @@ using namespace std;
 #include <sys/time.h>
 
 #define SWING_TIME 100
-#define HANG_TIME 500
+#define HANG_TIME 1000
 #define DRAG_SPEED 0.001
 #define WALK_SPEED 0.005
 #define TURN_SPEED 0.005
 #define TURN_TIME 400
 #define BADDIE_SPEED 0.01
-#define BADDIE_RANGE 0.01
+#define BADDIE_RANGE 0.05
+#define SWORD_RANGE 0.3
 
 void state_splash_screen( int n );
 void state_game( int n );
@@ -178,6 +179,8 @@ class Guy :
         float new_speed;
 };
 
+class Game;
+
 class Sword :
     public MGE::EventHandlers::Mouse::Button,
     public MGE::EventHandlers::Mouse::Motion,
@@ -206,6 +209,9 @@ class Sword :
 
          double x() const { return guy_.x(); }
          double y() const { return guy_.y(); }
+
+         bool swinging() { return swinging_; }
+         float swing_angle() { return target_angle_ + M_PI/4; }
 
      protected:
 
@@ -252,7 +258,7 @@ class Sword :
                         HANG_TIME,
                         bind(
                             &Sword::stop_dragging,
-                            this ) );
+                           this ) );
             }
          }
 
@@ -266,6 +272,7 @@ class Sword :
                     swinging_ = false;
                     rotation( target_angle_ );
                  }
+
              }
              else if( visible() ) {
                  guy_.move_towards( mouse_x, mouse_y, DRAG_SPEED );
@@ -336,6 +343,7 @@ class Baddie :
                 guy_.kill();
             }
             
+            cout<< "Move Baddie: ";
             timeout(
                     33,
                     bind(
@@ -373,6 +381,7 @@ class Game : public State,
         {
             baddie_timeout = 2000;
             new_baddie();
+            check_kills();
         }
 
         ~Game() {
@@ -390,9 +399,44 @@ class Game : public State,
             baddies.push_back( new Baddie( angle, guy ) );
 
             baddie_timeout *= 0.99;
+            cout<< "Make Baddie: ";
             timeout(baddie_timeout,
                     bind(
                         &Game::new_baddie,
+                        this ) );
+        }
+
+        void check_kills() {
+            if( sword.visible() ) {
+                std::list<Baddie*>::iterator i = baddies.begin();
+                while( i != baddies.end() ) {
+                    
+                    float angle = MGE::Helpers::line_angle(
+                            sword.x(), sword.y(),
+                            (*i)->x(), (*i)->y() );
+
+                    float distance = MGE::Helpers::line_length(
+                            sword.x(), sword.y(),
+                            (*i)->x(), (*i)->y() );
+
+                    if( sword.swing_angle() - M_PI/3 < angle &&
+                        sword.swing_angle() + M_PI/3 > angle &&
+                        distance < SWORD_RANGE )
+                    {
+                        cout<< "Killing baddie" <<endl;
+                        delete *i;
+                        baddies.erase(i);
+                    }
+
+                    i++;
+                }
+            }
+
+            cout<< "Check Kills: ";
+            timeout(
+                    33,
+                    bind(
+                        &Game::check_kills,
                         this ) );
         }
 
