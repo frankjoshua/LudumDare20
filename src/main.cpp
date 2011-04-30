@@ -79,38 +79,6 @@ class Guy :
 
     protected:
 
-<<<<<<< HEAD
-        void figure_angle_and_vector() {
-            if( current_vector[0] != new_vector[0] ||
-                current_vector[1] != new_vector[1] ||
-                current_speed != new_speed ||
-                current_angle != new_angle )
-            {
-                current_vector[0] = new_vector[0];
-                current_vector[1] = new_vector[1];
-
-                float x_distance = x() - current_vector[0];
-                x_distance = x_distance < 0 ? x_distance*-1 : x_distance;
-
-                float y_distance = y() - current_vector[1];
-                y_distance = y_distance < 0 ? y_distance*-1 : y_distance;
-
-                if( x_distance > 0.001 &&
-                    y_distance > 0.001 )
-                {
-                    current_speed = new_speed;
-
-                    old_angle = current_angle;
-                    new_angle = MGE::Helpers::line_angle(
-                        x(), y(),
-                        current_vector[0], current_vector[1] );
-                    current_angle = new_angle;
-                }
-                else {
-                    current_speed = 0;
-                }
-            }
-=======
         bool figure_angle_and_vector() {
         	  if( current_vector[0] != new_vector[0] ||
         	                    current_vector[1] != new_vector[1] ||
@@ -143,7 +111,7 @@ class Guy :
         	                        	if(distance > TURN_SPEED * 33){
         	                        		distance = TURN_SPEED;
         	                        	}
-        	                        	cout<<distance<<endl;
+
         	                        	if(angleDiff > -3 && angleDiff < 3){
         	                        		if(current_angle > new_angle){
 												current_angle -= distance;
@@ -178,7 +146,6 @@ class Guy :
         	                    return true;
         	                }
         	  return false;
->>>>>>> ac954b2c0cc50f576dfbbfab172eea497dce14ff
         }
 
         bool draw() {
