@@ -343,7 +343,6 @@ class Baddie :
                 guy_.kill();
             }
             
-            cout<< "Move Baddie: ";
             timeout(
                     33,
                     bind(
@@ -399,7 +398,6 @@ class Game : public State,
             baddies.push_back( new Baddie( angle, guy ) );
 
             baddie_timeout *= 0.99;
-            cout<< "Make Baddie: ";
             timeout(baddie_timeout,
                     bind(
                         &Game::new_baddie,
@@ -432,7 +430,6 @@ class Game : public State,
                 }
             }
 
-            cout<< "Check Kills: ";
             timeout(
                     33,
                     bind(
