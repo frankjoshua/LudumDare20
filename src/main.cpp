@@ -11,8 +11,10 @@ using namespace std;
 #include <sys/time.h>
 
 #define SWING_TIME 100
+#define HANG_TIME 500
 #define DRAG_SPEED 0.0001
 #define WALK_SPEED 0.0005
+#define TURN_TIME 400
 
 class Guy :
     public MGE::Drawables::Sprite
@@ -34,38 +36,179 @@ class Guy :
                     0,
                     0.2,
                     0.2,
-                    0 ),
-            dragging_( false ) {}
+                    0 ) 
+        {
+            old_vector[0] = 0;
+            old_vector[1] = 0;
+            old_speed = 0;
+            old_angle = 0;
+            
+            current_vector[0] = 0;
+            current_vector[1] = 0;
+            current_speed = 0;
+            current_angle = 0;
 
-        bool dragging_;
+            new_vector[0] = 0;
+            new_vector[1] = 0;
+            new_speed = 0;
+            new_angle = 0;
+        }
+
+        void move_towards( float x, float y, float speed ) {
+            old_vector[0] = current_vector[0];
+            old_vector[1] = current_vector[1];
+
+            new_vector[0] = x;
+            new_vector[1] = y;
+
+            old_speed = current_speed;
+            new_speed = speed;
+        }
 
     protected:
 
-        bool draw() {
-            if( !dragging_ ) {
-                float x_target = -1;
-                float y_target = 1;
+        void figure_angle_and_vector() {
+            if( current_vector[0] != new_vector[0] ||
+                current_vector[1] != new_vector[1] ||
+                current_speed != new_speed ||
+                current_angle != new_angle )
+            {
+                float x_slice = time_since_draw()*(new_vector[0] - old_vector[0])/TURN_TIME;
+                float y_slice = time_since_draw()*(new_vector[1] - old_vector[1])/TURN_TIME;
 
-                float angle = MGE::Helpers::line_angle(
-                        x(), y(),
-                        x_target, y_target );
+                if( x_slice > 0 && 
+                    old_vector[0] < new_vector[0] &&
+                    current_vector[0] + x_slice < new_vector[0] )
+                {
+                    current_vector[0] += x_slice;
+                }
+                else if( x_slice > 0 ) {
+                    current_vector[0] = new_vector[0];
+                }
+                else if( x_slice < 0 && 
+                         old_vector[0] > new_vector[0] &&
+                         current_vector[0] - x_slice > new_vector[0] )
+                {
+                    current_vector[0] += x_slice;
+                }
+                else if( x_slice < 0 ) {
+                    current_vector[0] = new_vector[0];
+                }
+                else {
+                    current_vector[0] = new_vector[0];
+                }
 
-                float x_delta = WALK_SPEED * cos(angle);
-                float y_delta = WALK_SPEED * sin(angle);
+                if( y_slice > 0 && 
+                    old_vector[1] < new_vector[1] &&
+                    current_vector[1] + y_slice < new_vector[1] )
+                {
+                    current_vector[1] += y_slice;
+                }
+                else if( y_slice > 0 ) {
+                    current_vector[1] = new_vector[1];
+                }
+                else if( y_slice < 0 && 
+                         old_vector[1] > new_vector[1] &&
+                         current_vector[1] - y_slice > new_vector[1] )
+                {
+                    current_vector[1] += y_slice;
+                }
+                else if( y_slice < 0 ) {
+                    current_vector[1] = new_vector[1];
+                }
+                else {
+                    current_vector[1] = new_vector[1];
+                }
+                
+                float speed_slice = time_since_draw()*(new_speed - old_speed)/TURN_TIME;
 
-                x( x()+x_delta );
-                y( y()+y_delta );
+                if( speed_slice > 0 && 
+                    old_speed < new_speed &&
+                    current_speed + speed_slice < new_speed)
+                {
+                    current_speed += speed_slice;
+                }
+                else if( speed_slice > 0 ) {
+                    current_speed = new_speed;
+                }
+                else if( speed_slice < 0 && 
+                         old_speed > new_speed &&
+                         current_speed + speed_slice > new_speed )
+                {
+                    current_speed += speed_slice;
+                }
+                else if( speed_slice < 0 ) {
+                    current_speed = new_speed;
+                }
+                else {
+                    current_speed = new_speed;
+                }
+
+                old_angle = current_angle;
+                new_angle = MGE::Helpers::line_angle(
+                    x(), y(),
+                    current_vector[0], current_vector[1] );
+
+                float angle_slice = time_since_draw()*(new_angle - old_angle)/TURN_TIME;
+
+                if( angle_slice > 0 && 
+                    old_angle < new_angle &&
+                    current_angle + angle_slice < new_angle)
+                {
+                    current_angle += angle_slice;
+                }
+                else if( angle_slice > 0 ) {
+                    current_angle = new_angle;
+                }
+                else if( angle_slice < 0 && 
+                         old_angle > new_angle &&
+                         current_angle + angle_slice > new_angle )
+                {
+                    current_angle += angle_slice;
+                }
+                else if( angle_slice < 0 ) {
+                    current_angle = new_angle;
+                }
+                else {
+                    current_angle = new_angle;
+                }
             }
-
-            MGE::Drawables::Sprite::draw();
         }
 
+        bool draw() {
+            figure_angle_and_vector();
+
+            float x_delta = current_speed * cos(current_angle);
+            float y_delta = current_speed * sin(current_angle);
+            
+            x( x()+x_delta );
+            y( y()+y_delta );
+
+            rotation( current_angle );
+
+            return MGE::Drawables::Sprite::draw();
+        }
+
+    private:
+
+        float old_vector[2];
+        float current_vector[2];
+        float new_vector[2];
+
+        float new_angle;
+        float current_angle;
+        float old_angle;
+
+        float old_speed;
+        float current_speed;
+        float new_speed;
 };
 
 class Sword :
     public MGE::EventHandlers::Mouse::Button,
     public MGE::EventHandlers::Mouse::Motion,
-    public MGE::Drawables::Sprite
+    public MGE::Drawables::Sprite,
+    public MGE::Timer
 {
      public:
          
@@ -93,8 +236,8 @@ class Sword :
      protected:
 
          virtual bool handle_mouse_motion(int x, int y) {
-             float mouse_x = MGE::Helpers::mouse_x_to_screen_x(x);
-             float mouse_y = MGE::Helpers::mouse_y_to_screen_y(y);
+             mouse_x = MGE::Helpers::mouse_x_to_screen_x(x);
+             mouse_y = MGE::Helpers::mouse_y_to_screen_y(y);
 
              double angle = MGE::Helpers::line_angle(
                      guy_.x(), guy_.y(),
@@ -113,29 +256,33 @@ class Sword :
          virtual bool handle_button_down(int button, int x, int y) {
              if( button == 0 ) {
                  swinging_ = true;
+                 guy_.move_towards(
+                         guy_.x(), guy_.y(), 0 );
                  rotation( target_angle_ - M_PI/4 );
                  visible(true);
                  request_redraw();
              }
          }
 
+         void stop_dragging() {
+             guy_.move_towards( -1, 1, DRAG_SPEED );
+         }
+
          virtual bool handle_button_up(int button, int x, int y ) {
             if( button == 0 ) {
-                guy_.dragging_ = false;
                 visible(false);
+
+                timeout(
+                        HANG_TIME,
+                        bind(
+                            &Sword::stop_dragging,
+                            this ) );
             }
          }
 
          virtual bool draw() {
-             static unsigned int stroke_time = 100;
-
-             static struct timeval last;
-             struct timeval now;
-
              if( swinging_ ) {
-                 gettimeofday(&now, NULL);
-                 
-                 float slice = ((target_angle_ + M_PI/4) - (target_angle_ - M_PI/4))/stroke_time;
+                 float slice = ((target_angle_ + M_PI/4) - (target_angle_ - M_PI/4))/SWING_TIME;
                  
                  rotation( rotation()+slice*time_since_draw() );
 
@@ -145,17 +292,9 @@ class Sword :
                  }
              }
              else if( visible() ) {
-                 guy_.dragging_ = true;
-
-                 float x_delta = DRAG_SPEED * cos(target_angle_ + M_PI/2);
-                 float y_delta = DRAG_SPEED * sin(target_angle_ + M_PI/2);
-
-                 guy_.x( guy_.x()+x_delta );
-                 guy_.y( guy_.y()+y_delta );
+                 guy_.move_towards( mouse_x, mouse_y, DRAG_SPEED );
              }
              
-             gettimeofday(&last,NULL);
-
              return MGE::Drawables::Sprite::draw();
          }
 
@@ -165,6 +304,9 @@ class Sword :
 
          float target_angle_;
          bool swinging_;
+
+         float mouse_x;
+         float mouse_y;
 
 };
 
