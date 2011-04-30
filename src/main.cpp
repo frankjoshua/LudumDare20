@@ -424,6 +424,7 @@ class Game : public State,
                         cout<< "Killing baddie" <<endl;
                         delete *i;
                         baddies.erase(i);
+                        break;
                     }
 
                     i++;
