@@ -14,7 +14,7 @@ using namespace std;
 #define HANG_TIME 500
 #define DRAG_SPEED 0.001
 #define WALK_SPEED 0.005
-#define TURN_SPEED 0.07
+#define TURN_SPEED 0.005
 #define TURN_TIME 400
 
 class Guy :
@@ -96,18 +96,22 @@ class Guy :
 
         	                        if(current_angle != new_angle){
         	                        	float angleDiff = current_angle - new_angle;
-
+        	                        	float distance = TURN_SPEED * time_since_draw();
+        	                        	if(distance > TURN_SPEED * 33){
+        	                        		distance = TURN_SPEED;
+        	                        	}
+        	                        	cout<<distance<<endl;
         	                        	if(angleDiff > -3 && angleDiff < 3){
         	                        		if(current_angle > new_angle){
-												current_angle -= TURN_SPEED;
+												current_angle -= distance;
 											} else {
-												current_angle += TURN_SPEED;
+												current_angle += distance;
 											}
         	                        	} else {
         	                        		if(current_angle > new_angle){
-												current_angle += TURN_SPEED;
+												current_angle += distance;
 											} else {
-												current_angle -= TURN_SPEED;
+												current_angle -= distance;
 											}
         	                        	}
 
@@ -134,7 +138,7 @@ class Guy :
         }
 
         bool draw() {
-            figure_angle_and_vector()
+            figure_angle_and_vector();
 
 
             float x_delta = current_speed * cos(current_angle);
