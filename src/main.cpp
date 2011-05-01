@@ -942,17 +942,52 @@ void state_game( int n ) {
     current_state = new Game;
 }
 
-class GameOver : public State {
+class GameOver : public State, public MGE::Timer {
     public:
 
         GameOver() :
-            background(INT_MIN,1,0,0,1) {}
+            screen(   4,
+                    MGE::Helpers::texture_from_image(
+                        "../assets/splashscreen.png"),
+                    0,0,
+                    2,2,
+                    0,
+                    0 )
+        {
+            fade_in();
+        }
 
         ~GameOver() {}
 
     private:
 
-        MGE::Drawables::ClearScreen background;
+        void fade_in() {
+            screen.opacity( screen.opacity() + 0.1 );
+
+            if( screen.opacity() >= 1 ) {
+                timeout(
+                        3000,
+                        bind(
+                            &GameOver::fade_out,
+                            this ) );
+            }
+            else {
+                timeout(
+                        33,
+                        bind(
+                            &GameOver::fade_in,
+                            this ) );
+            }
+        }
+
+        void fade_out() {
+            
+        }
+
+    private:
+
+        MGE::Drawables::Sprite screen;
+
 };
 
 void state_game_over( int n ) {
