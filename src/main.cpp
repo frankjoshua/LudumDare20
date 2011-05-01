@@ -25,28 +25,29 @@ void state_game( int n );
 void state_game_over( int n );
 
 class Guy :
-    public MGE::Drawables::Sprite,
-    public MGE::Timer
+    public MGE::Drawables::AnimatedSprite
 {
 
     public:
 
         Guy() :
-            Sprite( 0,
-                    SOIL_load_OGL_texture(
-						"../assets/guy.png",
-						SOIL_LOAD_RGBA,
-						SOIL_CREATE_NEW_ID,
-						SOIL_FLAG_MIPMAPS | 
-							SOIL_FLAG_INVERT_Y |
-							SOIL_FLAG_MULTIPLY_ALPHA |
-							SOIL_FLAG_COMPRESS_TO_DXT ),
+            AnimatedSprite( 0,
+                    200,
                     0,
                     0,
                     0.2,
                     0.2,
                     0 )
         {
+            add_frame( MGE::Helpers::texture_from_image( "../assets/guy1.png" ) );
+            add_frame( MGE::Helpers::texture_from_image( "../assets/guy2.png" ) );
+            add_frame( MGE::Helpers::texture_from_image( "../assets/guy3.png" ) );
+            add_frame( MGE::Helpers::texture_from_image( "../assets/guy4.png" ) );
+            add_frame( MGE::Helpers::texture_from_image( "../assets/guy5.png" ) );
+            add_frame( MGE::Helpers::texture_from_image( "../assets/guy6.png" ) );
+            add_frame( MGE::Helpers::texture_from_image( "../assets/guy7.png" ) );
+            add_frame( MGE::Helpers::texture_from_image( "../assets/guy8.png" ) );
+
             old_vector[0] = 0;
             old_vector[1] = 0;
             old_speed = 0;
@@ -159,7 +160,7 @@ class Guy :
             x( x()+x_delta );
             y( y()+y_delta );
 
-            rotation( current_angle );
+            rotation( current_angle - M_PI/2 );
 
             return MGE::Drawables::Sprite::draw();
         }
@@ -191,14 +192,7 @@ class Sword :
          
          Sword( Guy& guy ) :
             Sprite( -1,
-                    SOIL_load_OGL_texture(
-						"../assets/sword.png",
-						SOIL_LOAD_RGBA,
-						SOIL_CREATE_NEW_ID,
-						SOIL_FLAG_MIPMAPS | 
-							SOIL_FLAG_INVERT_Y |
-							SOIL_FLAG_MULTIPLY_ALPHA |
-							SOIL_FLAG_COMPRESS_TO_DXT ),
+                    MGE::Helpers::texture_from_image( "../assets/sword.png" ),
                     0,
                     0,
                     0.08,
@@ -303,14 +297,7 @@ class Baddie :
         Baddie( float direction,
                 Guy& guy ) :
             Sprite( -1,
-                    SOIL_load_OGL_texture(
-						"../assets/baddie.png",
-						SOIL_LOAD_RGBA,
-						SOIL_CREATE_NEW_ID,
-						SOIL_FLAG_MIPMAPS | 
-							SOIL_FLAG_INVERT_Y |
-							SOIL_FLAG_MULTIPLY_ALPHA |
-							SOIL_FLAG_COMPRESS_TO_DXT ),
+                    MGE::Helpers::texture_from_image("../assets/baddie.png"),
                     1.5*sin(direction),
                     1.5*cos(direction),
                     0.2,
@@ -421,7 +408,6 @@ class Game : public State,
                         sword.swing_angle() + M_PI/3 > angle &&
                         distance < SWORD_RANGE )
                     {
-                        cout<< "Killing baddie" <<endl;
                         delete *i;
                         baddies.erase(i);
                         break;
