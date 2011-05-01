@@ -25,10 +25,10 @@ using namespace std;
 #define SCREEN_X_THRESHOLD 1.05
 #define SCREEN_Y_THRESHOLD 1.05
 #define TREASURE_TIMEOUT 2000
-#define DROP_TREASURE_PERCENT 20;
-#define DROP_HEALTH_PERCENT 5;
-#define TREASURE_SCORE 100;
-#define BADDIE_SCORE 25;
+#define DROP_TREASURE_PERCENT 20
+#define DROP_HEALTH_PERCENT 5
+#define TREASURE_SCORE 100
+#define BADDIE_SCORE 25
 
 void state_splash_screen( int n );
 void state_game( int n );
