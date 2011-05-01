@@ -11,7 +11,7 @@ using namespace std;
 #include <sys/time.h>
 
 #define SWING_TIME 100
-#define HANG_TIME 1000
+#define HANG_TIME 100
 #define DRAG_SPEED 0.005
 #define WALK_SPEED 0.005
 #define TURN_SPEED 0.005
@@ -244,14 +244,20 @@ class Sword :
                     0.5,
                     0,
                     false ),
-            guy_( guy ) {}
+            guy_( guy ) {
+        	 treasure_x = 1;
+        	 treasure_y = 1;
+         }
 
          double x() const { return guy_.x(); }
          double y() const { return guy_.y(); }
 
          bool swinging() { return swinging_; }
          float swing_angle() { return target_angle_ + M_PI/4; }
+         float setTreasureX(float tX){ treasure_x = tX; }
+         float setTreasureY(float tY){ treasure_y = tY; }
 
+         void got_treasure(){ huntNewTreasure = true; }
      protected:
 
          virtual bool handle_mouse_motion(int x, int y) {
@@ -284,7 +290,7 @@ class Sword :
          }
 
          void stop_dragging() {
-             guy_.move_towards( -1, 1, DRAG_SPEED );
+             guy_.move_towards( treasure_x, treasure_y, DRAG_SPEED );
          }
 
          virtual bool handle_button_up(int button, int x, int y ) {
@@ -315,6 +321,8 @@ class Sword :
              }
              else if( visible() ) {
                  guy_.move_towards( mouse_x, mouse_y, DRAG_SPEED );
+             } else if (huntNewTreasure){
+            	 guy_.move_towards( treasure_x, treasure_y, DRAG_SPEED );
              }
              
              return MGE::Drawables::Sprite::draw();
@@ -330,6 +338,10 @@ class Sword :
          float mouse_x;
          float mouse_y;
 
+         float treasure_x;
+         float treasure_y;
+
+         bool huntNewTreasure;
 };
 
 class Baddie :
@@ -531,20 +543,35 @@ class Game : public State,
 
         void detect_treasure_contact(){
         			std::list<Treasure*>::iterator t = treasures.begin();
+        			float shortestDistance = 2;
+        			Treasure* closestTreasure;
+        			bool huntTreasure = false;
         			while( t != treasures.end() ) {
         				float x_distance = (*t)->x() - guy.x();
         			    float y_distance = (*t)->y() - guy.y();
 
         				float distance = sqrt( x_distance*x_distance + y_distance*y_distance );
+        				if(distance < shortestDistance){
+        					shortestDistance = distance;
+        					closestTreasure = *t;
+        					huntTreasure = true;
+        				}
 
         				if( distance < BADDIE_RANGE ) {
         					treasureScore++;
         					delete *t;
         					treasures.erase(t);
+        					huntTreasure = false;
+        					sword.got_treasure();
         					break;
         				}
 
         				t++;
+        			}
+
+        			if(huntTreasure){
+						sword.setTreasureX(closestTreasure->x());
+						sword.setTreasureY(closestTreasure->y());
         			}
 
         			timeout(
