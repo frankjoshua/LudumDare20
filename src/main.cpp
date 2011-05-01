@@ -338,11 +338,11 @@ class Sword :
 
          virtual bool handle_button_down(int button, int x, int y) {
              if( button == 0 ) {
+            	 visible(true);
                  swinging_ = true;
                  guy_.move_towards(
                          guy_.x(), guy_.y(), 0 );
                  rotation( target_angle_ - M_PI/4 );
-                 visible(true);
                  request_redraw();
              }
          }
@@ -352,8 +352,10 @@ class Sword :
          }
 
          virtual bool handle_button_up(int button, int x, int y ) {
+        	 cout<< "Button up" <<endl;
             if( button == 0 ) {
                 visible(false);
+                swinging_ = false;
                  guy_.move_towards(
                          guy_.x(), guy_.y(), 0 );
 
