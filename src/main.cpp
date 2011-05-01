@@ -12,10 +12,10 @@ using namespace std;
 
 #define SWING_TIME 100
 #define HANG_TIME 100
-#define DRAG_SPEED 0.015
-#define WALK_SPEED 0.005
-#define TURN_SPEED 0.005
-#define TURN_TIME 400
+#define DRAG_SPEED 0.0015
+#define WALK_SPEED 0.0005
+#define TURN_SPEED 0.0005
+#define TURN_TIME 100
 #define BADDIE_SPEED 0.01
 #define BADDIE_RANGE 0.05
 #define SWORD_RANGE 0.3
@@ -348,18 +348,7 @@ class Baddie :
         Baddie( float direction,
                 Guy& guy ) :
             Sprite( -1,
-<<<<<<< HEAD
-                    MGE::Helpers::texture_from_image("../assets/baddie.png"),
-=======
-                    SOIL_load_OGL_texture(
-						"../assets/bat1.png",
-						SOIL_LOAD_RGBA,
-						SOIL_CREATE_NEW_ID,
-						SOIL_FLAG_MIPMAPS | 
-							SOIL_FLAG_INVERT_Y |
-							SOIL_FLAG_MULTIPLY_ALPHA |
-							SOIL_FLAG_COMPRESS_TO_DXT ),
->>>>>>> 7de650a8bf567cda2d15a82bfa5f60b896e2fbb3
+                    MGE::Helpers::texture_from_image("../assets/bat1.png"),
                     1.5*sin(direction),
                     1.5*cos(direction),
                     0.142,
@@ -414,14 +403,8 @@ class Baddie :
 
         	Treasure( float startX, float startY ) :
                 Sprite( -1,
-                        SOIL_load_OGL_texture(
-    						"../assets/treasurechest.png",
-    						SOIL_LOAD_RGBA,
-    						SOIL_CREATE_NEW_ID,
-    						SOIL_FLAG_MIPMAPS |
-    							SOIL_FLAG_INVERT_Y |
-    							SOIL_FLAG_MULTIPLY_ALPHA |
-    							SOIL_FLAG_COMPRESS_TO_DXT ),
+                        MGE::Helpers::texture_from_image(
+    						"../assets/treasurechest.png" ),
                         startX,
                         startY,
                         0.2,
