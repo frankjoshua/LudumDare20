@@ -587,12 +587,16 @@ class State {
 
 State* current_state;
 
-class SplashScreen : public State {
+class SplashScreen : public State, public MGE::Timer {
 
     public:
 
         SplashScreen() :
+            stars_angle(0),
+            stars_multiplier(0),
+            background(0,0,0,0,1),
             stars_a(
+                    1,
                     MGE::Helpers::texture_from_image(
                         "../assets/splashscreen/splashstarsb.png"),
                     0,0,
@@ -600,6 +604,7 @@ class SplashScreen : public State {
                     0,
                     0 ),
             stars_b(
+                    2,
                     MGE::Helpers::texture_from_image(
                         "../assets/splashscreen/splashstarsr.png"),
                     0,0,
@@ -607,23 +612,97 @@ class SplashScreen : public State {
                     0,
                     0 ),
             stars_c(
+                    3,
                     MGE::Helpers::texture_from_image(
                         "../assets/splashscreen/splashstarsy.png"),
                     0,0,
                     2,2,
                     0,
                     0 ),
-            logo(
+            logo(   4,
                     MGE::Helpers::texture_from_image(
-                        "../assets/splashscreen.png"),
+                        "../assets/splashscreen/splashlogo.png"),
                     0,0,
                     2,2,
                     0,
                     0 )
         {
+            twinkle_stars();
+            fade_in_stars();
+        }
+
+    protected:
+
+        void twinkle_stars() {
+            stars_angle += 0.06;
+
+            stars_a.opacity( stars_multiplier * sin(stars_angle - 0) );
+            stars_b.opacity( stars_multiplier * sin(stars_angle - 2.09) );
+            stars_c.opacity( stars_multiplier * sin(stars_angle - 4.18) );
+
+            timeout(
+                    33,
+                    bind(
+                        &SplashScreen::twinkle_stars,
+                        this ) );;
+        }
+
+        void fade_in_logo() {
+            logo.opacity( logo.opacity() + 0.01 );
+
+            if( logo.opacity() >= 1 ) {
+                timeout(
+                        3000,
+                        bind(
+                            &SplashScreen::fade_out,
+                            this ) );
+            }
+            else {
+                timeout(
+                        33,
+                        bind(
+                            &SplashScreen::fade_in_logo,
+                            this ) );
+            }
+        }
+
+        void fade_in_stars() {
+            stars_multiplier += 0.01;
+
+            if( stars_multiplier >= 1 ) {
+                fade_in_logo();
+            }
+            else {
+                timeout(
+                        33,
+                        bind(
+                            &SplashScreen::fade_in_stars,
+                            this ) );
+            }
+        }
+
+        void fade_out() {
+            stars_multiplier -= 0.01;
+            logo.opacity( logo.opacity() - 0.01 );
+
+            if( stars_multiplier <= 0 ) {
+                glutTimerFunc(300,state_game,0);
+            }
+            else {
+                timeout(
+                        33,
+                        bind(
+                            &SplashScreen::fade_out,
+                            this ) );
+            }
         }
 
     private:
+
+        float stars_angle;
+        float stars_multiplier;
+
+        MGE::Drawables::ClearScreen background;
 
         MGE::Drawables::Sprite stars_a;
         MGE::Drawables::Sprite stars_b;
@@ -886,7 +965,7 @@ int main( int argc, char** argv ) {
     MGE::App app("You Are The Sword: Ludum Dare 20 Entry");
     app.initialize(argc,argv);
 
-    state_game(0);
+    current_state = new SplashScreen;
 
     return app.run();
 }
