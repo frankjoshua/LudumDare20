@@ -12,7 +12,7 @@ using namespace std;
 
 #define SWING_TIME 100
 #define HANG_TIME 1000
-#define DRAG_SPEED 0.001
+#define DRAG_SPEED 0.005
 #define WALK_SPEED 0.005
 #define TURN_SPEED 0.005
 #define TURN_TIME 400
@@ -79,8 +79,45 @@ class Guy :
         }
 
     protected:
+    void calcAngle()
+    {
+        if(current_angle != new_angle){
+        	                        	float angleDiff = current_angle - new_angle;
+        	                        	float distance = TURN_SPEED * time_since_draw();
+        	                        	if(distance > TURN_SPEED * 33){
+        	                        		distance = TURN_SPEED;
+        	                        	}
 
-        bool figure_angle_and_vector() {
+        	                        	if(angleDiff > -3 && angleDiff < 3){
+        	                        		if(current_angle > new_angle){
+												current_angle -= distance;
+											} else {
+												current_angle += distance;
+											}
+        	                        	} else {
+        	                        		if(current_angle > new_angle){
+												current_angle += distance;
+											} else {
+												current_angle -= distance;
+											}
+        	                        	}
+
+        	                        	if(current_angle < 0){
+        	                        		current_angle = 6;
+        	                        	} else if (current_angle > 6){
+        	                        		current_angle = 0;
+        	                        	}
+
+        	                        	angleDiff = current_angle - new_angle;
+
+        	                        	if(angleDiff > -TURN_SPEED && angleDiff < TURN_SPEED){
+        	                        		current_angle = new_angle;
+        	                        	}
+
+        	                        }
+    }
+
+    bool figure_angle_and_vector() {
         	  if( current_vector[0] != new_vector[0] ||
         	                    current_vector[1] != new_vector[1] ||
         	                    current_speed != new_speed ||
@@ -148,6 +185,8 @@ class Guy :
         	                }
         	  return false;
         }
+
+
 
         bool draw() {
             figure_angle_and_vector();
@@ -356,6 +395,36 @@ class Baddie :
 
 };
 
+    class Treasure :
+        public MGE::Drawables::Sprite,
+        public MGE::Timer
+    {
+
+        public:
+
+        	Treasure( float startX, float startY ) :
+                Sprite( -1,
+                        SOIL_load_OGL_texture(
+    						"../assets/treasurechest.png",
+    						SOIL_LOAD_RGBA,
+    						SOIL_CREATE_NEW_ID,
+    						SOIL_FLAG_MIPMAPS |
+    							SOIL_FLAG_INVERT_Y |
+    							SOIL_FLAG_MULTIPLY_ALPHA |
+    							SOIL_FLAG_COMPRESS_TO_DXT ),
+                        startX,
+                        startY,
+                        0.2,
+                        0.2,
+                        0 )
+            {
+               //Constructor stuff here
+        		//x(startX);
+        		//y(startY);
+            }
+
+    };
+
 class State {
     public:
         State() {};
@@ -379,17 +448,39 @@ class Game : public State,
             sword(guy) 
         {
             baddie_timeout = 2000;
+            treasureScore = 0;
+            srand ( time(NULL) );
+            int tCount = rand() % 5 + 1;
+            for(int t = 0; t < tCount; t ++){
+            	float xPos = (rand() % 10) / 10.0;
+            	if(rand() % 2 == 1){
+            		xPos = -xPos;
+            	}
+            	float yPos = (rand() % 10) / 10.0;
+            	if(rand() % 2 == 1){
+            	    yPos = -yPos;
+            	}
+				treasures.push_back(new Treasure( xPos, yPos));
+            }
             new_baddie();
             check_kills();
+            detect_treasure_contact();
         }
 
         ~Game() {
             cout<< "Leaving game" <<endl;
+            //Remove Baddies
             std::list<Baddie*>::iterator i = baddies.begin();
             while( i != baddies.end() ) {
                 delete *i;
                 i++;
             }
+            //Remove Treasures
+            std::list<Treasure*>::iterator t = treasures.begin();
+			while( t != treasures.end() ) {
+				delete *t;
+				t++;
+			}
         }
 
         void new_baddie() {
@@ -438,16 +529,44 @@ class Game : public State,
                         this ) );
         }
 
+        void detect_treasure_contact(){
+        			std::list<Treasure*>::iterator t = treasures.begin();
+        			while( t != treasures.end() ) {
+        				float x_distance = (*t)->x() - guy.x();
+        			    float y_distance = (*t)->y() - guy.y();
+
+        				float distance = sqrt( x_distance*x_distance + y_distance*y_distance );
+
+        				if( distance < BADDIE_RANGE ) {
+        					treasureScore++;
+        					delete *t;
+        					treasures.erase(t);
+        					break;
+        				}
+
+        				t++;
+        			}
+
+        			timeout(
+								33,
+								bind(
+									&Game::detect_treasure_contact,
+									this ) );
+        	}
+
     private:
 
         MGE::Drawables::ClearScreen background;
 
         unsigned int baddie_timeout;
+        int treasureScore;
 
         Guy guy;
         Sword sword;
 
         std::list<Baddie*> baddies;
+
+        std::list<Treasure*> treasures;
 
 };
 
