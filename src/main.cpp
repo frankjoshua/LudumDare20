@@ -10,15 +10,21 @@ using namespace std;
 
 #include <sys/time.h>
 
-#define SWING_TIME 100
-#define HANG_TIME 100
-#define DRAG_SPEED 0.0015
-#define WALK_SPEED 0.0005
-#define TURN_SPEED 0.0005
-#define TURN_TIME 100
-#define BADDIE_SPEED 0.01
+#define SWING_TIME   100
+#define HANG_TIME    1000
+#define DRAG_SPEED   0.005
+#define WALK_SPEED   0.005
+#define TURN_SPEED   0.005
+#define TURN_TIME    100
+#define BADDIE_SPEED 0.02
 #define BADDIE_RANGE 0.05
-#define SWORD_RANGE 0.3
+#define TREASURE_RANGE 0.15
+#define SWORD_RANGE  0.3
+#define WALL_X 0.5
+#define WALL_Y 0.32
+#define SCREEN_X_THRESHOLD 1.05
+#define SCREEN_Y_THRESHOLD 1.05
+#define TREASURE_TIMEOUT 2000
 
 void state_splash_screen( int n );
 void state_game( int n );
@@ -37,7 +43,9 @@ class Guy :
                     0,
                     0.2,
                     0.2,
-                    0 )
+                    0 ),
+            pulling_texture( MGE::Helpers::texture_from_image( "../assets/guy_stand.png") ),
+            pulling_(false)
         {
             add_frame( MGE::Helpers::texture_from_image( "../assets/guy1.png" ) );
             add_frame( MGE::Helpers::texture_from_image( "../assets/guy2.png" ) );
@@ -75,8 +83,20 @@ class Guy :
             new_speed = speed;
         }
 
-        void kill() {
-            glutTimerFunc(1,state_game_over,0);
+        void pull() {
+            w(0.55);
+            h(0.5);
+            pulling_ = true;
+        }
+
+        void stop_pulling() {
+            w(0.2);
+            h(0.2);
+            pulling_ = false;
+        }
+
+        bool pulling() {
+            return pulling_;
         }
 
     protected:
@@ -187,17 +207,53 @@ class Guy :
         	  return false;
         }
 
-
+        virtual GLuint texture() const {
+            if( pulling_ ) {
+                return pulling_texture;
+            }
+            else {
+                return AnimatedSprite::texture();
+            }
+        }
 
         bool draw() {
             figure_angle_and_vector();
 
-
             float x_delta = current_speed * cos(current_angle);
             float y_delta = current_speed * sin(current_angle);
             
-            x( x()+x_delta );
-            y( y()+y_delta );
+            float new_x = x()+x_delta;
+            float new_y = y()+y_delta;
+
+            if( ( new_x < -WALL_X && new_y > WALL_Y ) ||
+                ( new_x > WALL_X && new_y > WALL_Y ) ||
+                ( new_x > WALL_X && new_y < -WALL_Y ) ||
+                ( new_x < -WALL_X && new_y < -WALL_Y ) )
+            {
+                if( y() > WALL_Y && x() > -WALL_X && x() < WALL_X ) {
+                    y( new_y );                
+                }
+                else if( y() < -WALL_Y && x() > -WALL_X && x() < WALL_X ) {
+                    y( new_y );                
+                }
+                else if( x() > WALL_X && y() > -WALL_Y && y() < WALL_Y ) {
+                    x( new_x );
+                }
+                else if( x() < -WALL_X && y() > -WALL_Y && y() < WALL_Y ) {
+                    x( new_x );
+                }
+            }
+            else {
+                x( x()+x_delta );
+                y( y()+y_delta );
+            }
+
+            if( x() > SCREEN_X_THRESHOLD || x() < -SCREEN_X_THRESHOLD ) {
+                x( -1*x() );
+            }
+            else if( y() > SCREEN_Y_THRESHOLD || y() < -SCREEN_Y_THRESHOLD ) {
+                y( -1*y() );
+            }
 
             rotation( current_angle - M_PI/2 );
 
@@ -205,6 +261,10 @@ class Guy :
         }
 
     private:
+
+        GLuint pulling_texture;
+
+        bool pulling_;
 
         float old_vector[2];
         float current_vector[2];
@@ -231,12 +291,13 @@ class Sword :
          
          Sword( Guy& guy ) :
             Sprite( -1,
-                    MGE::Helpers::texture_from_image( "../assets/sword.png" ),
+                    MGE::Helpers::texture_from_image( "../assets/arm.png" ),
                     0,
                     0,
-                    0.08,
+                    0.15,
                     0.5,
                     0,
+                    1,
                     false ),
             guy_( guy ) {
         	 treasure_x = 1;
@@ -252,11 +313,14 @@ class Sword :
          float setTreasureY(float tY){ treasure_y = tY; }
 
          void got_treasure(){ huntNewTreasure = true; }
+
      protected:
 
          virtual bool handle_mouse_motion(int x, int y) {
              mouse_x = MGE::Helpers::mouse_x_to_screen_x(x);
              mouse_y = MGE::Helpers::mouse_y_to_screen_y(y);
+
+             cout<< mouse_x << " " << mouse_y <<endl;
 
              double angle = MGE::Helpers::line_angle(
                      guy_.x(), guy_.y(),
@@ -293,6 +357,8 @@ class Sword :
                  guy_.move_towards(
                          guy_.x(), guy_.y(), 0 );
 
+                 guy_.stop_pulling();
+
                 timeout(
                         HANG_TIME,
                         bind(
@@ -310,10 +376,12 @@ class Sword :
                  if(rotation() >= target_angle_ + M_PI/4 ) {
                     swinging_ = false;
                     rotation( target_angle_ );
+                    visible(false);
+                    guy_.pull();
                  }
 
              }
-             else if( visible() ) {
+             else if( visible() || guy_.pulling() ) {
                  guy_.move_towards( mouse_x, mouse_y, DRAG_SPEED );
              } else if (huntNewTreasure){
             	 guy_.move_towards( treasure_x, treasure_y, DRAG_SPEED );
@@ -338,24 +406,80 @@ class Sword :
          bool huntNewTreasure;
 };
 
+class Health {
+    
+    public:
+
+       Health() {
+            for( int i=0; i<3; i++ ) {
+                health.push_back(
+                        new MGE::Drawables::Sprite(
+                           1,
+                           MGE::Helpers::texture_from_image("../assets/heart.png"),
+                           -0.93+i*0.12,
+                           0.9,
+                           0.1,
+                           0.1 ) );
+            }
+            for( int i=0; i<3; i++ ) {
+                health.push_back(
+                        new MGE::Drawables::Sprite(
+                           1,
+                           MGE::Helpers::texture_from_image("../assets/heart.png"),
+                           -0.93+i*0.12,
+                           0.75,
+                           0.1,
+                           0.1 ) );
+            }
+       }
+
+       ~Health() {
+           delete health.back();
+           health.pop_back();
+       }
+
+       void hit() {
+           if( health.size() == 1 ) {
+               glutTimerFunc(1,state_game_over,0);
+           }
+           else {
+               delete health.back();
+               health.pop_back();
+           }
+       }
+
+    private:
+
+       std::list<MGE::Drawables::Sprite*> health;
+
+
+};
+
+
+
 class Baddie :
-    public MGE::Drawables::Sprite,
-    public MGE::Timer
+    public MGE::Drawables::AnimatedSprite
 {
     
     public:
 
         Baddie( float direction,
-                Guy& guy ) :
-            Sprite( -1,
-                    MGE::Helpers::texture_from_image("../assets/bat1.png"),
+                Guy& guy,
+                Health& health ) :
+            AnimatedSprite( -1,
+                    120,
                     1.5*sin(direction),
                     1.5*cos(direction),
                     0.142,
                     0.3,
                     0 ),
-            guy_( guy )
+            guy_( guy ),
+            health_( health )
         {
+            add_frame( MGE::Helpers::texture_from_image( "../assets/bat3.png" ) );
+            add_frame( MGE::Helpers::texture_from_image( "../assets/bat2.png" ) );
+            add_frame( MGE::Helpers::texture_from_image( "../assets/bat3.png" ) );
+
             move();
         }
 
@@ -378,19 +502,22 @@ class Baddie :
             float distance = sqrt( x_distance*x_distance + y_distance*y_distance );
 
             if( distance < BADDIE_RANGE ) {
-                guy_.kill();
+                health_.hit();
+                visible(false);
             }
-            
-            timeout(
-                    33,
-                    bind(
-                        &Baddie::move,
-                        this ) );
+            else {
+                timeout(
+                        33,
+                        bind(
+                            &Baddie::move,
+                            this ) );
+            }
         }
 
     private:
 
         Guy& guy_;
+        Health& health_;
 
 };
 
@@ -418,6 +545,40 @@ class Baddie :
 
     };
 
+class Score : public MGE::Drawables::Base {
+
+    public:
+
+        Score() :
+            score(0) {}
+
+        unsigned int score;
+
+    protected:
+
+        bool draw() {
+            glLoadIdentity();
+            glDisable(GL_TEXTURE_2D);
+            glColor3f(1,1,1);
+            glRasterPos3f(0.7, 0.85, 0);
+
+            char label[] = "Score: ";
+            char score_str[5];
+            sprintf(score_str,"%4d",score);
+
+            for( char* c=label; *c!='\0'; c++ ) {
+                glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,*c);
+            }
+            for( char* c=score_str; *c!='\0'; c++ ) {
+                glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18,*c);
+            }
+            glEnable(GL_TEXTURE_2D);
+        
+            return true;
+        }
+
+};
+
 class State {
     public:
         State() {};
@@ -426,7 +587,45 @@ class State {
 
 State* current_state;
 
-void state_splash_screen( int n ) {
+void SplashScreen( int n ) {
+
+    public:
+
+        SplashScreen() :
+            stars_a(
+                    MGE::Helpers::texture_from_image(
+                        "../assets/splashscreen/splashstarsb.png"),
+                    0,0,
+                    2,2,
+                    0,
+                    0 ),
+            stars_b(
+                    MGE::Helpers::texture_from_image(
+                        "../assets/splashscreen/splashstarsr.png"),
+                    0,0,
+                    2,2,
+                    0,
+                    0 ),
+            stars_c(
+                    MGE::Helpers::texture_from_image(
+                        "../assets/splashscreen/splashstarsy.png"),
+                    0,0,
+                    2,2,
+                    0,
+                    0 ),
+            logo(
+                    MGE::Helpers::texture_from_image(
+                        "../assets/splashscreen.png"),
+                    0,0,
+                    2,2,
+                    0,
+                    0 ),
+
+    MGE::Drawables::Sprite stars_a;
+    MGE::Drawables::Sprite stars_b;
+    MGE::Drawables::Sprite stars_c;
+
+    MGE::Drawables::Sprite logo;
 
 }
 
@@ -437,25 +636,21 @@ class Game : public State,
     public:
 
         Game() :
-            background(INT_MIN,0,0,1,1),
+            background(INT_MIN,0,0,0,1),
+            background_image(
+                    -2,
+                    MGE::Helpers::texture_from_image("../assets/background.png"),
+                    0,
+                    0,
+                    2,
+                    2 ),
             sword(guy) 
         {
             baddie_timeout = 2000;
             treasureScore = 0;
             srand ( time(NULL) );
-            int tCount = rand() % 15 + 1;
-            for(int t = 0; t < tCount; t ++){
-            	float xPos = (rand() % 10) / 10.0;
-            	if(rand() % 2 == 1){
-            		xPos = -xPos;
-            	}
-            	float yPos = (rand() % 10) / 10.0;
-            	if(rand() % 2 == 1){
-            	    yPos = -yPos;
-            	}
-				treasures.push_back(new Treasure( xPos, yPos));
-            }
             new_baddie();
+            new_treasure();
             check_kills();
             detect_treasure_contact();
         }
@@ -479,21 +674,46 @@ class Game : public State,
         void new_baddie() {
             float angle = 1.1*M_PI*float(rand())/INT_MAX;
 
-            baddies.push_back( new Baddie( angle, guy ) );
+            baddies.push_back( new Baddie( angle, guy, health ) );
 
-            baddie_timeout *= 0.99;
+            baddie_timeout *= 0.95;
             timeout(baddie_timeout,
                     bind(
                         &Game::new_baddie,
                         this ) );
         }
 
+        void new_treasure() {
+            float position;
+            float new_x = 1;
+            float new_y = 1;
+
+            while(
+                ( new_x < -WALL_X && new_y > WALL_Y ) ||
+                ( new_x > WALL_X && new_y > WALL_Y ) ||
+                ( new_x > WALL_X && new_y < -WALL_Y ) ||
+                ( new_x < -WALL_X && new_y < -WALL_Y ) )
+            {
+                new_x = rand()*2.0/INT_MAX -1;
+                new_y = rand()*2.0/INT_MAX -1;
+            }
+
+            treasures.push_back( new Treasure( new_x, new_y ) );
+
+            timeout(TREASURE_TIMEOUT,
+                    bind(
+                        &Game::new_treasure,
+                        this ));
+        }
+
         void check_kills() {
-            if( sword.visible() ) {
+            if( sword.visible() || guy.pulling() ) {
                 std::list<Baddie*>::iterator i = baddies.begin();
                 while( i != baddies.end() ) {
                     
-                    float angle = MGE::Helpers::line_angle(
+                    float angle;
+                    
+                    angle = MGE::Helpers::line_angle(
                             sword.x(), sword.y(),
                             (*i)->x(), (*i)->y() );
 
@@ -501,12 +721,25 @@ class Game : public State,
                             sword.x(), sword.y(),
                             (*i)->x(), (*i)->y() );
 
-                    if( sword.swing_angle() - M_PI/3 < angle &&
+                    if( !guy.pulling() &&
+                        sword.swing_angle() - M_PI/3 < angle &&
                         sword.swing_angle() + M_PI/3 > angle &&
                         distance < SWORD_RANGE )
                     {
                         delete *i;
                         baddies.erase(i);
+                        score.score++;
+                        break;
+                    }
+                    else if(
+                        guy.pulling() &&
+                        guy.rotation() + M_PI/2 - M_PI/3 < angle &&
+                        guy.rotation() + M_PI/2 + M_PI/3 > angle &&
+                        distance < SWORD_RANGE )
+                    {
+                        delete *i;
+                        baddies.erase(i);
+                        score.score++;
                         break;
                     }
 
@@ -538,8 +771,8 @@ class Game : public State,
         					huntTreasure = true;
         				}
 
-        				if( distance < BADDIE_RANGE ) {
-        					treasureScore++;
+        				if( distance < TREASURE_RANGE ) {
+        					score.score++;
         					delete *t;
         					treasures.erase(t);
         					huntTreasure = false;
@@ -605,12 +838,15 @@ class Game : public State,
     private:
 
         MGE::Drawables::ClearScreen background;
+        MGE::Drawables::Sprite background_image;
 
         unsigned int baddie_timeout;
         int treasureScore;
 
         Guy guy;
         Sword sword;
+        Score score;
+        Health health;
 
         std::list<Baddie*> baddies;
 
