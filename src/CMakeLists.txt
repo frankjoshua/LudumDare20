@@ -4,10 +4,10 @@ CMAKE_MINIMUM_REQUIRED( VERSION 2.8 )
 
 INCLUDE_DIRECTORIES( . )
 INCLUDE_DIRECTORIES( /opt/local/include )
-INCLUDE_DIRECTORIES( /Users/rtward/Workspace/MyGameEngine/src )
+INCLUDE_DIRECTORIES( /home/josh/workspace/My-Game-Engine/src )
 
 LINK_DIRECTORIES( /opt/local/lib )
-LINK_DIRECTORIES( /Users/rtward/Workspace/MyGameEngine/build )
+LINK_DIRECTORIES( /home/josh/workspace/My-Game-Engine/src )
 
 FILE( GLOB_RECURSE
 	SOURCE_FILES
