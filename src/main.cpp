@@ -587,7 +587,7 @@ class State {
 
 State* current_state;
 
-void SplashScreen( int n ) {
+class SplashScreen : public State {
 
     public:
 
@@ -619,15 +619,19 @@ void SplashScreen( int n ) {
                     0,0,
                     2,2,
                     0,
-                    0 ),
+                    0 )
+        {
+        }
 
-    MGE::Drawables::Sprite stars_a;
-    MGE::Drawables::Sprite stars_b;
-    MGE::Drawables::Sprite stars_c;
+    private:
 
-    MGE::Drawables::Sprite logo;
+        MGE::Drawables::Sprite stars_a;
+        MGE::Drawables::Sprite stars_b;
+        MGE::Drawables::Sprite stars_c;
 
-}
+        MGE::Drawables::Sprite logo;
+
+};
 
 class Game : public State,
     public MGE::Timer 
