@@ -12,7 +12,7 @@ using namespace std;
 
 #define SWING_TIME 100
 #define HANG_TIME 100
-#define DRAG_SPEED 0.005
+#define DRAG_SPEED 0.015
 #define WALK_SPEED 0.005
 #define TURN_SPEED 0.005
 #define TURN_TIME 400
@@ -355,7 +355,7 @@ class Baddie :
                 Guy& guy ) :
             Sprite( -1,
                     SOIL_load_OGL_texture(
-						"../assets/baddie.png",
+						"../assets/bat1.png",
 						SOIL_LOAD_RGBA,
 						SOIL_CREATE_NEW_ID,
 						SOIL_FLAG_MIPMAPS | 
@@ -364,8 +364,8 @@ class Baddie :
 							SOIL_FLAG_COMPRESS_TO_DXT ),
                     1.5*sin(direction),
                     1.5*cos(direction),
-                    0.2,
-                    0.2,
+                    0.142,
+                    0.3,
                     0 ),
             guy_( guy )
         {
@@ -378,7 +378,7 @@ class Baddie :
             float angle = MGE::Helpers::line_angle(
                     x(), y(),
                     guy_.x(), guy_.y() );
-
+            rotation(angle);
             float x_delta = BADDIE_SPEED * cos(angle);
             float y_delta = BADDIE_SPEED * sin(angle);
             
@@ -462,7 +462,7 @@ class Game : public State,
             baddie_timeout = 2000;
             treasureScore = 0;
             srand ( time(NULL) );
-            int tCount = rand() % 5 + 1;
+            int tCount = rand() % 15 + 1;
             for(int t = 0; t < tCount; t ++){
             	float xPos = (rand() % 10) / 10.0;
             	if(rand() % 2 == 1){
@@ -542,6 +542,7 @@ class Game : public State,
         }
 
         void detect_treasure_contact(){
+        			//Look for treasure
         			std::list<Treasure*>::iterator t = treasures.begin();
         			float shortestDistance = 2;
         			Treasure* closestTreasure;
@@ -563,15 +564,55 @@ class Game : public State,
         					treasures.erase(t);
         					huntTreasure = false;
         					sword.got_treasure();
+        					shortestDistance = 2;
         					break;
         				}
 
         				t++;
         			}
 
+        			//Run from Baddies
+        			bool runFromBaddie = false;
+        			Baddie* closestBaddie;
+        			std::list<Baddie*>::iterator b = baddies.begin();
+        			shortestDistance += .05;
+        			while(b != baddies.end())
+        			{
+        				float x_distance = (*b)->x() - guy.x();
+						float y_distance = (*b)->y() - guy.y();
+
+						float distance = sqrt( x_distance*x_distance + y_distance*y_distance );
+						if(distance < shortestDistance && distance < .25){
+							shortestDistance = distance;
+							huntTreasure = false;
+							closestBaddie = *b;
+							runFromBaddie = true;
+						}
+
+						b++;
+        			}
+
         			if(huntTreasure){
 						sword.setTreasureX(closestTreasure->x());
 						sword.setTreasureY(closestTreasure->y());
+        			} else if(runFromBaddie) {
+        				float bX = closestBaddie->x();
+        				float bY = closestBaddie->y();
+        				float sX = sword.x();
+        				float sY = sword.y();
+
+        				if(sX > bX){
+        					sword.setTreasureX(1);
+        				} else {
+        					sword.setTreasureX(-1);
+        				}
+
+        				if(sY > bY){
+							sword.setTreasureY(1);
+						} else {
+							sword.setTreasureY(-1);
+						}
+
         			}
 
         			timeout(
