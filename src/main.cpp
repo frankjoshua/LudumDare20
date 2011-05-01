@@ -25,6 +25,10 @@ using namespace std;
 #define SCREEN_X_THRESHOLD 1.05
 #define SCREEN_Y_THRESHOLD 1.05
 #define TREASURE_TIMEOUT 2000
+#define DROP_TREASURE_PERCENT 20;
+#define DROP_HEALTH_PERCENT 5;
+#define TREASURE_SCORE 100;
+#define BADDIE_SCORE 25;
 
 void state_splash_screen( int n );
 void state_game( int n );
@@ -320,7 +324,7 @@ class Sword :
              mouse_x = MGE::Helpers::mouse_x_to_screen_x(x);
              mouse_y = MGE::Helpers::mouse_y_to_screen_y(y);
 
-             cout<< mouse_x << " " << mouse_y <<endl;
+             //cout<< mouse_x << " " << mouse_y <<endl;
 
              double angle = MGE::Helpers::line_angle(
                      guy_.x(), guy_.y(),
@@ -352,7 +356,6 @@ class Sword :
          }
 
          virtual bool handle_button_up(int button, int x, int y ) {
-        	 cout<< "Button up" <<endl;
             if( button == 0 ) {
                 visible(false);
                 swinging_ = false;
@@ -448,6 +451,29 @@ class Health {
                delete health.back();
                health.pop_back();
            }
+       }
+
+       void extraLife() {
+    	   int i = health.size();
+    	   if(i < 3){
+               health.push_back(
+                       new MGE::Drawables::Sprite(
+                          1,
+                          MGE::Helpers::texture_from_image("../assets/heart.png"),
+                          -0.93+i*0.12,
+                          0.9,
+                          0.1,
+                          0.1 ) );
+    	   } else if ( i < 6) {
+               health.push_back(
+                       new MGE::Drawables::Sprite(
+                          1,
+                          MGE::Helpers::texture_from_image("../assets/heart.png"),
+                          -0.93+(i - 3)*0.12,
+                          0.75,
+                          0.1,
+                          0.1 ) );
+    	   }
        }
 
     private:
@@ -547,6 +573,28 @@ class Baddie :
 
     };
 
+        class ExtraHealth :
+            public MGE::Drawables::Sprite,
+            public MGE::Timer
+        {
+
+            public:
+
+            	ExtraHealth( float startX, float startY ) :
+                    Sprite( -1,
+                            MGE::Helpers::texture_from_image(
+        						"../assets/heart.png" ),
+                            startX,
+                            startY,
+                            0.1,
+                            0.1,
+                            0 )
+                {
+
+                }
+
+        };
+
 class Score : public MGE::Drawables::Base {
 
     public:
@@ -589,7 +637,7 @@ class State {
 
 State* current_state;
 
-class SplashScreen : public State, public MGE::Timer {
+class SplashScreen : public State, public MGE::Timer,  public MGE::EventHandlers::Mouse::Button {
 
     public:
 
@@ -634,6 +682,13 @@ class SplashScreen : public State, public MGE::Timer {
         }
 
     protected:
+
+        virtual bool handle_button_down(int button, int x, int y) {
+        	cout<<"click"<<endl;
+                     if( button == 0 ) {
+                    	 glutTimerFunc(300,state_game,0);
+                     }
+                 }
 
         void twinkle_stars() {
             stars_angle += 0.06;
@@ -785,11 +840,21 @@ class Game : public State,
 
             treasures.push_back( new Treasure( new_x, new_y ) );
 
-            timeout(TREASURE_TIMEOUT,
-                    bind(
-                        &Game::new_treasure,
-                        this ));
+//            timeout(TREASURE_TIMEOUT,
+//                    bind(
+//                        &Game::new_treasure,
+//                        this ));
         }
+
+        void new_treasure(float new_x, float new_y) {
+                   treasures.push_back( new Treasure( new_x, new_y ) );
+
+               }
+
+        void new_health(float new_x, float new_y) {
+                           extrahealths.push_back( new ExtraHealth( new_x, new_y ) );
+
+                       }
 
         void check_kills() {
             if( sword.visible() || guy.pulling() ) {
@@ -813,7 +878,7 @@ class Game : public State,
                     {
                         delete *i;
                         baddies.erase(i);
-                        score.score++;
+                        score.score += BADDIE_SCORE;
                         break;
                     }
                     else if(
@@ -822,9 +887,18 @@ class Game : public State,
                         guy.rotation() + M_PI/2 + M_PI/3 > angle &&
                         distance < SWORD_RANGE )
                     {
-                        delete *i;
+                    	//Remove Baddie add health or treasure increment score
+                    	int getStuff = rand() % 100 + 1;
+                    	int tPercent = 100 - DROP_TREASURE_PERCENT;
+                    	int hPercent = DROP_HEALTH_PERCENT;
+                    	if(getStuff > tPercent){
+                    		new_treasure((*i)->x(),(*i)->y());
+                    	} else if(getStuff < hPercent){
+                    		new_health((*i)->x(),(*i)->y());
+                    	}
+                    	delete *i;
                         baddies.erase(i);
-                        score.score++;
+                        score.score += BADDIE_SCORE;
                         break;
                     }
 
@@ -840,6 +914,23 @@ class Game : public State,
         }
 
         void detect_treasure_contact(){
+        			//Pick up extra health
+        			std::list<ExtraHealth*>::iterator h = extrahealths.begin();
+        			while( h != extrahealths.end() ) {
+						float x_distance = (*h)->x() - guy.x();
+						float y_distance = (*h)->y() - guy.y();
+
+						float distance = sqrt( x_distance*x_distance + y_distance*y_distance );
+
+						if( distance < TREASURE_RANGE ) {;
+							delete *h;
+							extrahealths.erase(h);
+							health.extraLife();
+							break;
+						}
+
+						h++;
+					}
         			//Look for treasure
         			std::list<Treasure*>::iterator t = treasures.begin();
         			float shortestDistance = 2;
@@ -857,7 +948,7 @@ class Game : public State,
         				}
 
         				if( distance < TREASURE_RANGE ) {
-        					score.score++;
+        					score.score += TREASURE_SCORE;
         					delete *t;
         					treasures.erase(t);
         					huntTreasure = false;
@@ -936,6 +1027,8 @@ class Game : public State,
         std::list<Baddie*> baddies;
 
         std::list<Treasure*> treasures;
+
+        std::list<ExtraHealth*> extrahealths;
 
 };
 
