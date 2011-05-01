@@ -427,7 +427,7 @@ class Baddie :
                         startX,
                         startY,
                         0.2,
-                        0.2,
+                        0.204,
                         0 )
             {
                //Constructor stuff here
